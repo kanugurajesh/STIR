@@ -40,6 +40,7 @@ MONGODB_URI=your_mongodb_connection_string
 PROXYMESH_USERNAME=your_proxymesh_username
 PROXYMESH_PASSWORD=your_proxymesh_password
 TWITTER_USERNAME=your_twitter_username
+TWITTER_EMAIL=your_twitter_email
 TWITTER_PASSWORD=your_twitter_password
 ```
 
