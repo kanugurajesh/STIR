@@ -121,10 +121,13 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Future Improvements
 
-- [ ] Add trend history visualization
-- [ ] Implement trend analysis features
-- [ ] Add user authentication
-- [ ] Support for multiple Twitter accounts
-- [ ] Advanced proxy configuration options
-- [ ] Data export functionality
-- [ ] Real-time trend notifications
+- [x] Add trend history visualization
+- [x] Implement trend analysis features
+- [x] Add user authentication
+- [x] Support for multiple Twitter accounts
+- [x] Advanced proxy configuration options
+- [x] Data export functionality
+- [x] Real-time trend notifications
+
+## Demo
+[![STIR](https://img.youtube.com/vi/LoME2QhzJSo/0.jpg)](https://youtu.be/LoME2QhzJSo)
