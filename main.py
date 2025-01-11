@@ -10,6 +10,8 @@ from flask import Flask, render_template, jsonify
 from pymongo import MongoClient
 import random
 import os
+import json
+import tempfile
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -31,29 +33,115 @@ PROXY_LIST = [
     'us-wa.proxymesh.com:31280',
     'us-ny.proxymesh.com:31280',
     'us-ca.proxymesh.com:31280',
-    # Add more proxy addresses as needed
 ]
 
 def get_random_proxy():
     return random.choice(PROXY_LIST)
 
+def create_proxy_extension():
+    """Create a Chrome extension to handle proxy authentication"""
+    proxy_username = os.getenv('PROXYMESH_USERNAME')
+    proxy_password = os.getenv('PROXYMESH_PASSWORD')
+    
+    if not proxy_username or not proxy_password:
+        raise Exception("ProxyMesh credentials not configured in .env file")
+    
+    proxy_host = get_random_proxy()
+    
+    manifest_json = """
+    {
+        "version": "1.0.0",
+        "manifest_version": 2,
+        "name": "Chrome Proxy",
+        "permissions": [
+            "proxy",
+            "tabs",
+            "unlimitedStorage",
+            "storage",
+            "<all_urls>",
+            "webRequest",
+            "webRequestBlocking"
+        ],
+        "background": {
+            "scripts": ["background.js"]
+        },
+        "minimum_chrome_version":"22.0.0"
+    }
+    """
+
+    background_js = """
+    var config = {
+        mode: "fixed_servers",
+        rules: {
+            singleProxy: {
+                scheme: "http",
+                host: "%s",
+                port: parseInt(%s)
+            },
+            bypassList: ["localhost"]
+        }
+    };
+
+    chrome.proxy.settings.set({value: config, scope: "regular"}, function() {});
+
+    function callbackFn(details) {
+        return {
+            authCredentials: {
+                username: "%s",
+                password: "%s"
+            }
+        };
+    }
+
+    chrome.webRequest.onAuthRequired.addListener(
+        callbackFn,
+        {urls: ["<all_urls>"]},
+        ['blocking']
+    );
+    """ % (
+        proxy_host.split(':')[0],  # host
+        proxy_host.split(':')[1],  # port
+        proxy_username,
+        proxy_password
+    )
+
+    # Create a temporary directory for the extension
+    extension_dir = tempfile.mkdtemp()
+    
+    # Create manifest.json
+    with open(os.path.join(extension_dir, "manifest.json"), "w") as f:
+        f.write(manifest_json)
+    
+    # Create background.js
+    with open(os.path.join(extension_dir, "background.js"), "w") as f:
+        f.write(background_js)
+    
+    return extension_dir, proxy_host
+
 def scrape_twitter_trends():
     driver = None
     try:
+        # Create proxy extension
+        extension_dir, proxy_address = create_proxy_extension()
+        
         # Setup Chrome options
         chrome_options = webdriver.ChromeOptions()
-        proxy = get_random_proxy()
-        chrome_options.add_argument(f'--proxy-server={proxy}')
-        chrome_options.add_argument('--headless')
+        chrome_options.add_argument(f'--load-extension={extension_dir}')
+        chrome_options.add_argument('--ignore-certificate-errors')
+        chrome_options.add_argument('--disable-extensions')
+        chrome_options.add_argument('--no-sandbox')
+        chrome_options.add_argument('--disable-dev-shm-usage')
+        # chrome_options.add_argument('--headless')  # Uncomment for headless mode
 
         # Initialize driver
         try:
-            driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), 
-                                    options=chrome_options)
+            driver = webdriver.Chrome(
+                service=Service(ChromeDriverManager().install()),
+                options=chrome_options
+            )
         except Exception as e:
             raise Exception(f"Failed to initialize Chrome driver: {str(e)}")
 
-        # Login to Twitter
         try:
             driver.get('https://twitter.com/login')
             wait = WebDriverWait(driver, 20)
@@ -90,7 +178,7 @@ def scrape_twitter_trends():
                 "nameoftrend4": trend_texts[3] if len(trend_texts) > 3 else "",
                 "nameoftrend5": trend_texts[4] if len(trend_texts) > 4 else "",
                 "datetime": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "ip_address": proxy
+                "ip_address": proxy_address
             }
 
             try:
@@ -106,6 +194,10 @@ def scrape_twitter_trends():
     finally:
         if driver:
             driver.quit()
+        # Clean up the temporary extension directory
+        if os.path.exists(extension_dir):
+            import shutil
+            shutil.rmtree(extension_dir)
 
 @app.route('/')
 def home():
