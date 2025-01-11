@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Twitter Trends Scraper</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        #result {
+            margin-top: 20px;
+            white-space: pre-wrap;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+        .loading {
+            color: #666;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <h1>Twitter Trends Scraper</h1>
+    <button onclick="runScript()">Click here to run the script</button>
+    <div id="result"></div>
+
+    <script>
+        async function runScript() {
+            const resultDiv = document.getElementById('result');
+            const button = document.querySelector('button');
+            
+            button.disabled = true;
+            resultDiv.className = 'loading';
+            resultDiv.textContent = 'Scraping trends...';
+            
+            try {
+                const response = await fetch('/scrape');
+                const data = await response.json();
+                
+                if (data.error) {
+                    resultDiv.className = 'error';
+                    resultDiv.textContent = `Error: ${data.error}`;
+                } else {
+                    resultDiv.className = '';
+                    const result = `These are the most happening topics as on ${data.datetime}\n` +
+                        `- ${data.nameoftrend1}\n` +
+                        `- ${data.nameoftrend2}\n` +
+                        `- ${data.nameoftrend3}\n` +
+                        `- ${data.nameoftrend4}\n` +
+                        `- ${data.nameoftrend5}\n\n` +
+                        `The IP address used for this query was ${data.ip_address}\n\n` +
+                        `Here's a JSON extract of this record from the MongoDB:\n` +
+                        JSON.stringify(data, null, 2);
+                    
+                    resultDiv.textContent = result;
+                }
+            } catch (error) {
+                resultDiv.className = 'error';
+                resultDiv.textContent = 'Error occurred while scraping trends: ' + error.message;
+            } finally {
+                button.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
