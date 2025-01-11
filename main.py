@@ -152,6 +152,126 @@ def scrape_twitter_trends():
             if not username or not password:
                 raise Exception("Twitter credentials not configured in .env file")
 
+            # Handle initial username/email input
+            username_input = wait.until(EC.presence_of_element_located((By.NAME, "text")))
+            username_input.send_keys(username)
+            
+            # Click Next
+            next_button = wait.until(EC.element_to_be_clickable((By.XPATH, "//span[text()='Next']")))
+            next_button.click()
+
+            # Handle verification if it appears
+            try:
+                verification_input = WebDriverWait(driver, 5).until(
+                    EC.presence_of_element_located((By.NAME, "text"))
+                )
+                print("Verification screen detected")
+                verification_input.send_keys(username)  # or your email/phone depending on what's requested
+                next_button = wait.until(EC.element_to_be_clickable((By.XPATH, "//span[text()='Next']")))
+                next_button.click()
+            except Exception as e:
+                print("No verification screen, continuing with login")
+                
+            # # if another verification screen appears, add additional username input handling here
+            # username_input = wait.until(EC.presence_of_element_located((By.NAME, "text")))
+            # username_input.send_keys(username)
+            
+            # # Click Next
+            # next_button = wait.until(EC.element_to_be_clickable((By.XPATH, "//span[text()='Next']")))
+            # next_button.click()
+
+            # Handle password input
+            password_input = wait.until(EC.presence_of_element_located((By.NAME, "password")))
+            password_input.send_keys(password)
+
+            # Click login
+            login_button = wait.until(EC.element_to_be_clickable((By.XPATH, "//span[text()='Log in']")))
+            login_button.click()
+
+            # Additional verification check
+            try:
+                unusual_activity = WebDriverWait(driver, 5).until(
+                    EC.presence_of_element_located((By.XPATH, "//*[contains(text(), 'unusual login activity')]"))
+                )
+                print("Unusual activity detected")
+                # Handle the verification process
+                # You might need to add additional steps depending on the verification method
+                raise Exception("Account requires additional verification. Please log in manually first to verify the account.")
+            except Exception as e:
+                if "Account requires additional verification" in str(e):
+                    raise
+                print("No unusual activity detected")
+
+            # Wait for trends to load
+            trends = wait.until(EC.presence_of_all_elements_located(
+                (By.CSS_SELECTOR, "[data-testid='trend']")))[:5]
+
+            trend_texts = [trend.text.split('\n')[0] for trend in trends]
+
+            document = {
+                "_id": str(uuid.uuid4()),
+                "nameoftrend1": trend_texts[0] if len(trend_texts) > 0 else "",
+                "nameoftrend2": trend_texts[1] if len(trend_texts) > 1 else "",
+                "nameoftrend3": trend_texts[2] if len(trend_texts) > 2 else "",
+                "nameoftrend4": trend_texts[3] if len(trend_texts) > 3 else "",
+                "nameoftrend5": trend_texts[4] if len(trend_texts) > 4 else "",
+                "datetime": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "ip_address": proxy_address
+            }
+
+            try:
+                collection.insert_one(document)
+            except Exception as e:
+                raise Exception(f"Failed to save to MongoDB: {str(e)}")
+
+            return document
+
+        except Exception as e:
+            raise Exception(f"Failed during Twitter scraping: {str(e)}")
+
+    finally:
+        if driver:
+            driver.quit()
+        # Clean up the temporary extension directory
+        if os.path.exists(extension_dir):
+            import shutil
+            shutil.rmtree(extension_dir)
+
+"""
+def scrape_twitter_trends():
+    driver = None
+    try:
+        # Create proxy extension
+        extension_dir, proxy_address = create_proxy_extension()
+        
+        # Setup Chrome options
+        chrome_options = webdriver.ChromeOptions()
+        chrome_options.add_argument(f'--load-extension={extension_dir}')
+        chrome_options.add_argument('--ignore-certificate-errors')
+        chrome_options.add_argument('--disable-extensions')
+        chrome_options.add_argument('--no-sandbox')
+        chrome_options.add_argument('--disable-dev-shm-usage')
+        # chrome_options.add_argument('--headless')  # Uncomment for headless mode
+
+        # Initialize driver
+        try:
+            driver = webdriver.Chrome(
+                service=Service(ChromeDriverManager().install()),
+                options=chrome_options
+            )
+        except Exception as e:
+            raise Exception(f"Failed to initialize Chrome driver: {str(e)}")
+
+        try:
+            driver.get('https://twitter.com/login')
+            wait = WebDriverWait(driver, 20)
+
+            username = os.getenv('TWITTER_USERNAME')
+            password = os.getenv('TWITTER_PASSWORD')
+
+            if not username or not password:
+                raise Exception("Twitter credentials not configured in .env file")
+
             username_input = wait.until(EC.presence_of_element_located((By.NAME, "text")))
             username_input.send_keys(username)
 
@@ -199,16 +319,20 @@ def scrape_twitter_trends():
             import shutil
             shutil.rmtree(extension_dir)
 
+"""
+
 @app.route('/')
 def home():
     return render_template('index.html')
 
 @app.route('/scrape')
 def scrape():
+    print("Scrape route accessed")  # Debug log
     try:
         result = scrape_twitter_trends()
         return jsonify(result)
     except Exception as e:
+        print(f"Error in scrape route: {str(e)}")  # Debug log
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':

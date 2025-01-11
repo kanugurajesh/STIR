@@ -3,69 +3,237 @@
 <head>
     <title>Twitter Trends Scraper</title>
     <style>
+        /* Modern color scheme and base styles */
+        :root {
+            --primary-color: #1DA1F2;
+            --secondary-color: #14171A;
+            --accent-color: #17BF63;
+            --bg-color: #F7F9FA;
+            --card-bg: #FFFFFF;
+            --text-primary: #14171A;
+            --text-secondary: #657786;
+            --border-color: #E1E8ED;
+        }
+
         body {
-            font-family: Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 0;
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        .container {
             max-width: 800px;
             margin: 0 auto;
-            padding: 20px;
+            padding: 2rem;
         }
-        #result {
-            margin-top: 20px;
-            white-space: pre-wrap;
+
+        /* Header styles */
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding: 2rem 0;
+            background: linear-gradient(135deg, var(--primary-color), #1991DA);
+            color: white;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
-        button {
-            padding: 10px 20px;
-            font-size: 16px;
+
+        .header h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+
+        /* Button styles */
+        .button-container {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .fetch-button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 50px;
             cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(29, 161, 242, 0.2);
         }
-        .error {
-            color: red;
-            font-weight: bold;
+
+        .fetch-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(29, 161, 242, 0.3);
         }
+
+        .fetch-button:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        /* Results card */
+        .results-card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .section-title {
+            color: var(--primary-color);
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            font-weight: 600;
+        }
+
+        .timestamp {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-bottom: 1.5rem;
+        }
+
+        /* Trends list */
+        .trends-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .trend-item {
+            background: rgba(29, 161, 242, 0.05);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            transition: transform 0.2s ease;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .trend-item:hover {
+            transform: translateX(5px);
+        }
+
+        /* Query info */
+        .query-info {
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* MongoDB record */
+        .mongo-record {
+            background: var(--bg-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+            font-family: "Monaco", "Menlo", monospace;
+            font-size: 0.9rem;
+            overflow-x: auto;
+        }
+
+        .record-title {
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+
+        /* Loading spinner */
         .loading {
-            color: #666;
-            font-style: italic;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--bg-color);
+            border-top: 4px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
 <body>
-    <h1>Twitter Trends Scraper</h1>
-    <button onclick="runScript()">Click here to run the script</button>
-    <div id="result"></div>
+    <div class="header">
+        <h1>Twitter Trends Scraper</h1>
+    </div>
+
+    <div class="container">
+        <div class="button-container">
+            <button onclick="runScript()" class="fetch-button">
+                Fetch Latest Trends
+            </button>
+        </div>
+
+        <div id="result-container" class="results-card">
+            <div id="result"></div>
+        </div>
+    </div>
 
     <script>
         async function runScript() {
             const resultDiv = document.getElementById('result');
-            const button = document.querySelector('button');
+            const button = document.querySelector('.fetch-button');
             
             button.disabled = true;
-            resultDiv.className = 'loading';
-            resultDiv.textContent = 'Scraping trends...';
+            resultDiv.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
             
             try {
                 const response = await fetch('/scrape');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
                 const data = await response.json();
                 
                 if (data.error) {
-                    resultDiv.className = 'error';
-                    resultDiv.textContent = `Error: ${data.error}`;
+                    resultDiv.innerHTML = `
+                        <div class="error-message">
+                            <p>Error occurred: ${data.error}</p>
+                        </div>`;
                 } else {
-                    resultDiv.className = '';
-                    const result = `These are the most happening topics as on ${data.datetime}\n` +
-                        `- ${data.nameoftrend1}\n` +
-                        `- ${data.nameoftrend2}\n` +
-                        `- ${data.nameoftrend3}\n` +
-                        `- ${data.nameoftrend4}\n` +
-                        `- ${data.nameoftrend5}\n\n` +
-                        `The IP address used for this query was ${data.ip_address}\n\n` +
-                        `Here's a JSON extract of this record from the MongoDB:\n` +
-                        JSON.stringify(data, null, 2);
-                    
-                    resultDiv.textContent = result;
+                    const trends = [
+                        data.nameoftrend1,
+                        data.nameoftrend2,
+                        data.nameoftrend3,
+                        data.nameoftrend4,
+                        data.nameoftrend5
+                    ].filter(trend => trend);
+
+                    resultDiv.innerHTML = `
+                        <div class="section-title">Top Trending Topics</div>
+                        <div class="timestamp">As of ${new Date(data.datetime).toLocaleString()}</div>
+                        <ul class="trends-list">
+                            ${trends.map(trend => `
+                                <li class="trend-item">${trend}</li>
+                            `).join('')}
+                        </ul>
+                        <div class="query-info">
+                            Query IP: ${data.ip_address}
+                        </div>
+                        <div class="mongo-record">
+                            <div class="record-title">MongoDB Record</div>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    `;
                 }
             } catch (error) {
-                resultDiv.className = 'error';
-                resultDiv.textContent = 'Error occurred while scraping trends: ' + error.message;
+                resultDiv.innerHTML = `
+                    <div class="error-message">
+                        <p>Failed to fetch trends: ${error.message}</p>
+                    </div>`;
             } finally {
                 button.disabled = false;
             }
