@@ -218,11 +218,12 @@ def scrape_twitter_trends():
             driver.get('https://twitter.com/home')
             time.sleep(5)  # Wait for page to load
             
+            """
             print("Looking for What's happening section...")  # Debug log
             
             # Find the "What's happening" section and trends
             whats_happening = wait.until(EC.presence_of_element_located(
-                (By.XPATH, "//h2[text()='What's happening']")))
+                (By.XPATH, "//h2[text()=\"What's happening\"]")))
             print("Found What's happening section")  # Debug log
             
             # Get the parent container of the trends
@@ -260,6 +261,23 @@ def scrape_twitter_trends():
                 "nameoftrend3": trend_texts[2],
                 "nameoftrend4": trend_texts[3],
                 "nameoftrend5": trend_texts[4],
+                "datetime": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "ip_address": proxy_address
+            }
+            
+            """
+            
+             # Wait for trends to load
+            trends = wait.until(EC.presence_of_all_elements_located(
+                (By.CSS_SELECTOR, "[data-testid='trend']")))[:5]
+            trend_texts = [trend.text.split('\n')[0] for trend in trends]
+            document = {
+                "_id": str(uuid.uuid4()),
+                "nameoftrend1": trend_texts[0] if len(trend_texts) > 0 else "",
+                "nameoftrend2": trend_texts[1] if len(trend_texts) > 1 else "",
+                "nameoftrend3": trend_texts[2] if len(trend_texts) > 2 else "",
+                "nameoftrend4": trend_texts[3] if len(trend_texts) > 3 else "",
+                "nameoftrend5": trend_texts[4] if len(trend_texts) > 4 else "",
                 "datetime": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "ip_address": proxy_address
             }
