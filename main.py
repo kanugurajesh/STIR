@@ -218,42 +218,28 @@ def scrape_twitter_trends():
             driver.get('https://twitter.com/home')
             time.sleep(5)  # Wait for page to load
             
-            """
-            print("Looking for What's happening section...")  # Debug log
+            # Wait for trends to load
+            wait.until(EC.presence_of_element_located(
+                (By.CSS_SELECTOR, "[data-testid='trend']")))
+            time.sleep(2)  # Additional wait to ensure all trends are loaded
             
-            # Find the "What's happening" section and trends
-            whats_happening = wait.until(EC.presence_of_element_located(
-                (By.XPATH, "//h2[text()=\"What's happening\"]")))
-            print("Found What's happening section")  # Debug log
-            
-            # Get the parent container of the trends
-            trends_container = whats_happening.find_element(By.XPATH, "./following-sibling::div")
-            print("Found trends container")  # Debug log
-            
-            # Get all trend elements
-            trends = trends_container.find_elements(By.XPATH, ".//div[@data-testid='trend']")[:5]
-            print(f"Found {len(trends)} trends")  # Debug log
-            
-            # Extract trend text
+            trends = driver.find_elements(By.CSS_SELECTOR, "[data-testid='trend']")[:5]
             trend_texts = []
+            
             for trend in trends:
                 try:
                     # Try to get the trend text
-                    trend_text = trend.find_element(By.XPATH, ".//span").text.strip()
-                    if not trend_text:  # If span is empty, try getting the whole text
-                        trend_text = trend.text.split('\n')[0].strip()
+                    trend_text = trend.text.split('\n')[0].strip()
                     if trend_text:
                         trend_texts.append(trend_text)
-                        print(f"Found trend: {trend_text}")  # Debug log
                 except Exception as e:
-                    print(f"Error extracting trend text: {str(e)}")  # Debug log
-                    continue
-
+                    print(f"Error extracting trend text: {str(e)}")
+                    trend_texts.append("")
+            
             # Ensure we have exactly 5 trends
             while len(trend_texts) < 5:
                 trend_texts.append("")
 
-            # Create document
             document = {
                 "_id": str(uuid.uuid4()),
                 "nameoftrend1": trend_texts[0],
@@ -261,23 +247,6 @@ def scrape_twitter_trends():
                 "nameoftrend3": trend_texts[2],
                 "nameoftrend4": trend_texts[3],
                 "nameoftrend5": trend_texts[4],
-                "datetime": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "ip_address": proxy_address
-            }
-            
-            """
-            
-             # Wait for trends to load
-            trends = wait.until(EC.presence_of_all_elements_located(
-                (By.CSS_SELECTOR, "[data-testid='trend']")))[:5]
-            trend_texts = [trend.text.split('\n')[0] for trend in trends]
-            document = {
-                "_id": str(uuid.uuid4()),
-                "nameoftrend1": trend_texts[0] if len(trend_texts) > 0 else "",
-                "nameoftrend2": trend_texts[1] if len(trend_texts) > 1 else "",
-                "nameoftrend3": trend_texts[2] if len(trend_texts) > 2 else "",
-                "nameoftrend4": trend_texts[3] if len(trend_texts) > 3 else "",
-                "nameoftrend5": trend_texts[4] if len(trend_texts) > 4 else "",
                 "datetime": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "ip_address": proxy_address
             }
